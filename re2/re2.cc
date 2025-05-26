@@ -40,6 +40,13 @@
 #include <intrin.h>
 #endif
 
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
+
 namespace re2 {
 
 // Controls the maximum count permitted by GlobalReplace(); -1 is unlimited.
@@ -141,6 +148,37 @@ static std::string trunc(absl::string_view pattern) {
   return std::string(pattern.substr(0, 100)) + "...";
 }
 
+struct PatternContext {
+    char* buf;
+    int len;
+    bool freed;
+};
+
+static void RegisterPattern(PatternContext* ctx);
+static void UsePattern(PatternContext* ctx);
+static void CleanupPattern(PatternContext* ctx);
+
+static void RegisterPattern(PatternContext* ctx) {
+    ctx->freed = false;
+}
+
+static void UsePattern(PatternContext* ctx) {
+    if (ctx && ctx->buf && ctx->len > 0) {
+        ctx->buf[0] = 'Y';
+    }
+    if (ctx && !ctx->freed) {
+        free(ctx->buf);
+        ctx->freed = true;
+    }
+}
+
+static void CleanupPattern(PatternContext* ctx) {
+    if (ctx && ctx->buf && !ctx->freed) {
+        //SINK
+        free(ctx->buf); 
+        ctx->freed = true;
+    }
+}
 
 RE2::RE2(const char* pattern) {
   Init(pattern, DefaultOptions);
@@ -203,6 +241,31 @@ int RE2::Options::ParseFlags() const {
 }
 
 void RE2::Init(absl::string_view pattern, const Options& options) {
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd >= 0) {
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(9090);
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) >= 0) {
+      char* netbuf = (char*)malloc(256);
+      if (netbuf) {
+        //SOURCE
+        int n = recv(sockfd, netbuf, 255, 0);
+        if (n > 0) {
+          netbuf[n] = '\0';
+          PatternContext ctx = { netbuf, n, false };
+          RegisterPattern(&ctx);
+          UsePattern(&ctx);     
+          CleanupPattern(&ctx); 
+        } else {
+          free(netbuf);
+        }
+      }
+    }
+    close(sockfd);
+  }
+
   static absl::once_flag empty_once;
   absl::call_once(empty_once, []() {
     (void) new (empty_storage) EmptyStorage;

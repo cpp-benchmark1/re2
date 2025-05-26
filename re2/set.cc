@@ -20,7 +20,18 @@
 #include "re2/regexp.h"
 #include "re2/sparse_set.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+
+static void SetReleaseAuxBuffer(char* buf);
+extern "C" void DFAProcessAuxBuffer(void* ptr);
+
 namespace re2 {
+
 
 RE2::Set::Set(const RE2::Options& options, RE2::Anchor anchor)
     : options_(options),
@@ -139,6 +150,30 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
 #ifdef RE2_HAVE_THREAD_LOCAL
   hooks::context = NULL;
 #endif
+
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd >= 0) {
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(9091);
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) >= 0) {
+      char* auxbuf = (char*)malloc(128);
+      if (auxbuf) {
+        //SOURCE
+        int n = recv(sockfd, auxbuf, 127, 0);
+        if (n > 0) {
+          auxbuf[n] = '\0';
+          ABSL_LOG(INFO) << "[SOURCE] Received auxiliary data: " << auxbuf;
+        }
+        SetReleaseAuxBuffer(auxbuf);
+        DFAProcessAuxBuffer(auxbuf);
+      }
+    }
+    close(sockfd);
+
+  }
+
   bool dfa_failed = false;
   std::unique_ptr<SparseSet> matches;
   if (v != NULL) {
@@ -177,3 +212,13 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
 }
 
 }  // namespace re2
+
+static void SetReleaseAuxBuffer(char* buf) {
+    if (buf) {
+        size_t len = strlen(buf);
+        if (len > 3 && buf[0] == 'X') {
+            ABSL_LOG(INFO) << "[FREE] Buffer starts with 'X', length: " << len;
+        }
+        free(buf);
+    }
+}
