@@ -133,7 +133,6 @@ set(RE2_HEADERS
     )
 
 add_library(re2 ${RE2_SOURCES})
-target_link_libraries(re2 PRIVATE ws2_32)
 target_compile_features(re2 PUBLIC cxx_std_14)
 target_include_directories(re2 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 # CMake gives "set_target_properties called with incorrect number of arguments."

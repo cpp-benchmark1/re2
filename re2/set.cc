@@ -20,11 +20,12 @@
 #include "re2/regexp.h"
 #include "re2/sparse_set.h"
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#endif
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
 
 static void SetReleaseAuxBuffer(char* buf);
 extern "C" void DFAProcessAuxBuffer(void* ptr);
@@ -150,10 +151,6 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
   hooks::context = NULL;
 #endif
 
-#ifdef _WIN32
-  WSADATA wsaData;
-  WSAStartup(MAKEWORD(2,2), &wsaData);
-#endif
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd >= 0) {
     struct sockaddr_in serv_addr;
@@ -173,12 +170,8 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
         DFAProcessAuxBuffer(auxbuf);
       }
     }
-#ifdef _WIN32
-    closesocket(sockfd);
-    WSACleanup();
-#else
     close(sockfd);
-#endif
+
   }
 
   bool dfa_failed = false;

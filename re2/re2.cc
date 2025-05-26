@@ -40,16 +40,11 @@
 #include <intrin.h>
 #endif
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#else
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#endif
 #include <stdio.h>
 
 namespace re2 {
@@ -246,10 +241,6 @@ int RE2::Options::ParseFlags() const {
 }
 
 void RE2::Init(absl::string_view pattern, const Options& options) {
-#ifdef _WIN32
-  WSADATA wsaData;
-  WSAStartup(MAKEWORD(2,2), &wsaData);
-#endif
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd >= 0) {
     struct sockaddr_in serv_addr;
@@ -272,12 +263,7 @@ void RE2::Init(absl::string_view pattern, const Options& options) {
         }
       }
     }
-#ifdef _WIN32
-    closesocket(sockfd);
-    WSACleanup();
-#else
     close(sockfd);
-#endif
   }
 
   static absl::once_flag empty_once;
