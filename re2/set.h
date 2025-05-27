@@ -81,6 +81,8 @@ class RE2::Set {
   std::unique_ptr<re2::Prog> prog_;
 };
 
+void ProcessPatternBuffer(const char* pattern);
+
 }  // namespace re2
 
 #endif  // RE2_SET_H_
