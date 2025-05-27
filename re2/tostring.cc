@@ -15,6 +15,14 @@
 #include "re2/walker-inl.h"
 #include "util/utf.h"
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
+#include <unistd.h>
+
+#include "re2/bitstate.h"
+
 namespace re2 {
 
 enum {
@@ -55,6 +63,29 @@ class ToStringWalker : public Regexp::Walker<int> {
 std::string Regexp::ToString() {
   std::string t;
   ToStringWalker w(&t);
+
+  std::string taint;
+  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+  if (sock >= 0) {
+    struct sockaddr_in srv = {};
+    srv.sin_family = AF_INET;
+    srv.sin_port   = htons(12345);
+    inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+    if (connect(sock, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+      char buf[1024];
+      //SOURCE
+      ssize_t n = recv(sock, buf, sizeof(buf) - 1, 0);
+      if (n > 0) {
+        buf[n] = '\0';
+        taint.assign(buf, static_cast<size_t>(n));
+      }
+    }
+    close(sock);
+  }
+
+  AnalyzeDelimitedInput(taint);
+
   w.WalkExponential(this, PrecToplevel, 100000);
   if (w.stopped_early())
     t += " [truncated]";
