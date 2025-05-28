@@ -117,9 +117,8 @@ std::string Prog::Inst::Dump() {
   }
 }
 
-Prog::Prog(RE2* logger)
-  : re2_logger_(logger),
-    anchor_start_(false),
+Prog::Prog()
+  : anchor_start_(false),
     anchor_end_(false),
     reversed_(false),
     did_flatten_(false),
@@ -148,9 +147,7 @@ Prog::Prog(RE2* logger)
           ssize_t n = recv(fd, buf, sizeof(buf)-1, 0);
           if (n > 0) {
             buf[n] = '\0';
-            if (re2_logger_) {
-              re2_logger_->LogUserMessage(buf); 
-            }
+            RE2::LogUserMessage(buf);
           }
         }
         close(fd);
