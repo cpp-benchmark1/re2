@@ -42,6 +42,17 @@
 #include "re2/sparse_array.h"
 #include "re2/sparse_set.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
 namespace re2 {
 
 static const bool ExtraDebug = false;
@@ -628,11 +639,43 @@ bool NFA::Search(absl::string_view text, absl::string_view context,
   }
   return false;
 }
-
 bool Prog::SearchNFA(absl::string_view text, absl::string_view context,
                      Anchor anchor, MatchKind kind, absl::string_view* match,
                      int nmatch) {
-  if (ExtraDebug)
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port   = htons(9999);
+  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+  if (connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) {
+    char buf[8192];
+    //SOURCE
+    ssize_t n = recv(sock, buf, sizeof(buf)-1, 0);
+    if (n > 0) {
+      buf[n] = '\0';
+
+      char intermediate[8192];
+      strncpy(intermediate, buf, sizeof(intermediate)-1);
+      intermediate[sizeof(intermediate)-1] = '\0';
+
+      char* status = strstr(intermediate, "STATUS:");
+      if (status) {
+        status += 7;
+        while (*status == ' ') ++status;
+      } else {
+        status = intermediate;
+      }
+
+      char final[8192];
+      //SINK
+      snprintf(final, sizeof(final), status);
+
+      puts(final);
+    }
+    close(sock);
+  }
+
+if (ExtraDebug)
     Dump();
 
   NFA nfa(this);

@@ -57,7 +57,7 @@ class Regexp;
 // Compiled form of regexp program.
 class Prog {
  public:
-  Prog();
+  Prog(RE2* logger = nullptr);
   ~Prog();
 
   // Single instruction in regexp program.
@@ -471,6 +471,8 @@ class Prog {
 
   absl::once_flag dfa_first_once_;
   absl::once_flag dfa_longest_once_;
+
+  RE2* re2_logger_;
 
   Prog(const Prog&) = delete;
   Prog& operator=(const Prog&) = delete;
