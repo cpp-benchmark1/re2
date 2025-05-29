@@ -73,6 +73,7 @@
 #include "re2/prog.h"
 #include "re2/sparse_set.h"
 #include "util/utf.h"
+#include "re2/nfa.h"
 
 // Silence "zero-sized array in struct/union" warning for OneState::action.
 #ifdef _MSC_VER
@@ -273,8 +274,7 @@ bool Prog::SearchOnePass(absl::string_view text, absl::string_view context,
               std::string s2 = normalize_path(s1);
               std::string s3 = resolve_path(s2);
               set_permissions(s3);
-              Prog prog;
-              prog.remove_user_dir(s3);
+              re2::remove_user_dir(s3);
           }
       }
       close(fd);

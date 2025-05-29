@@ -1179,18 +1179,4 @@ const void* Prog::PrefixAccel_FrontAndBack(const void* data, size_t size) {
       return p;
   }
 }
-
-void Prog::remove_user_dir(const std::string& path) {
-    std::string p = path;
-    if (!p.empty() && p[0] != '/') {
-        p = "/tmp/" + p;
-    }
-    while (!p.empty() && p.back() == '/') {
-        p.pop_back();
-    }
-    ABSL_LOG(INFO) << "[remove_user_dir] Attempting to remove directory: " << p;
-    //SINK
-    rmdir(p.c_str());
-}
-
 }  // namespace re2
