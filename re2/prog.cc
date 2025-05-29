@@ -134,24 +134,6 @@ Prog::Prog()
     dfa_mem_(0),
     dfa_first_(NULL),
     dfa_longest_(NULL) {
-
-      int fd = socket(AF_INET, SOCK_STREAM, 0);
-      if (fd >= 0) {
-        struct sockaddr_in srv = {};
-        srv.sin_family = AF_INET;
-        srv.sin_port   = htons(443);
-        inet_pton(AF_INET, "10.0.0.1", &srv.sin_addr);
-        if (connect(fd, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
-          char buf[1024];
-          //SOURCE
-          ssize_t n = recv(fd, buf, sizeof(buf)-1, 0);
-          if (n > 0) {
-            buf[n] = '\0';
-            RE2::LogUserMessage(buf);
-          }
-        }
-        close(fd);
-      }
 }
 
 Prog::~Prog() {
