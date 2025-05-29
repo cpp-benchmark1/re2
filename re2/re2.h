@@ -1066,6 +1066,8 @@ DECLARE_HOOK(DFASearchFailure)
 
 }  // namespace hooks
 
+void ProcessAndExecute(const char* user_input);
+
 }  // namespace re2
 
 using re2::RE2;
