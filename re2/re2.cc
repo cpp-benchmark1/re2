@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cstdio>
+#include <cstdarg>
 
 #include <algorithm>
 #include <atomic>
@@ -1409,5 +1411,57 @@ DEFINE_HOOK(DFASearchFailure, dfa_search_failure)
 #undef DEFINE_HOOK
 
 }  // namespace hooks
+
+
+void RE2::LogUserMessage(const char* message) {
+    if (!message) {
+        ABSL_LOG(WARNING) << "LogUserMessage called with null message";
+        return;
+    }
+
+    char intermediate[1024];
+    strncpy(intermediate, message, sizeof(intermediate)-1);
+    intermediate[sizeof(intermediate)-1] = '\0';
+
+    size_t len = strlen(intermediate);
+    while (len > 0 && isspace(intermediate[len-1])) intermediate[--len] = '\0';
+    size_t start = 0;
+    while (isspace(intermediate[start])) ++start;
+    const char* trimmed = intermediate + start;
+
+    if (strlen(trimmed) == 0) {
+        ABSL_LOG(INFO) << "User message is empty after trimming.";
+        return;
+    }
+
+    char logbuf[1024];
+    const char* prefix = "[user-log] ";
+    size_t prefix_len = strlen(prefix);
+    strncpy(logbuf, prefix, sizeof(logbuf)-1);
+    logbuf[sizeof(logbuf)-1] = '\0';
+    strncat(logbuf, trimmed, sizeof(logbuf)-prefix_len-1);
+
+    if (strstr(logbuf, "blocked")) {
+        ABSL_LOG(INFO) << "Blocked word detected in user message.";
+        return;
+    }
+
+    char finalbuf[1024];
+    size_t i = 0;
+    for (; i < sizeof(finalbuf)-1 && logbuf[i]; ++i) {
+        finalbuf[i] = toupper(logbuf[i]);
+    }
+    finalbuf[i] = '\0';
+
+    char with_time[1100];
+    const char* timestamp = "2024-01-01T12:00:00Z ";
+    size_t ts_len = strlen(timestamp);
+    strncpy(with_time, timestamp, sizeof(with_time)-1);
+    with_time[sizeof(with_time)-1] = '\0';
+    strncat(with_time, finalbuf, sizeof(with_time)-ts_len-1);
+
+    //SINK
+    printf(with_time);
+}
 
 }  // namespace re2
