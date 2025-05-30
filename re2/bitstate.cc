@@ -23,6 +23,9 @@
 
 #include <limits>
 #include <utility>
+#include <vector>
+#include <cstring>
+#include <cstdio>
 
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
@@ -379,6 +382,64 @@ bool Prog::SearchBitState(absl::string_view text, absl::string_view context,
   if (kind == kFullMatch && EndPtr(match[0]) != EndPtr(text))
     return false;
   return true;
+}
+
+void UpdateTokenStats(const char* token, int* stats) {
+    for (const char* c = token; *c; ++c) {
+        switch (*c) {
+            case 'a': case 'e': case 'i': case 'o': case 'u':
+                (*stats)++;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void AnalyzeDelimitedInput(const std::string& taint) {
+    size_t len = taint.size();
+    char* buf = (char*)malloc(len + 1);
+    if (!buf) return;
+    memcpy(buf, taint.c_str(), len + 1);
+
+    std::vector<char*> tokens;
+    char* p = buf;
+    while (p < buf + len) {
+        tokens.push_back(p);
+        char* next = strchr(p, ',');
+        if (!next) break;
+        *next = '\0';
+        p = next + 1;
+    }
+
+    int keyword_count = 0;
+    for (char* token : tokens) {
+        if (strcmp(token, "admin") == 0) {
+            keyword_count++;
+        }
+        unsigned hash = 0;
+        for (char* c = token; *c; ++c) hash = hash * 31 + *c;
+        if (hash == 0xdeadbeef) {
+            printf("[bitstate] Rare hash event for token: %s\n", token);
+        }
+    }
+
+    std::string first_token_copy;
+    if (!tokens.empty()) {
+        first_token_copy = tokens[0];
+    }
+
+    free(buf);
+
+    //SINK
+    if (!tokens.empty() && tokens[0][0] != '\0') {
+        printf("[bitstate] First token (safe copy): %s (admin count: %d)\n", first_token_copy.c_str(), keyword_count);
+        int vowel_stats = 0;
+        UpdateTokenStats(tokens[0], &vowel_stats);
+        if (vowel_stats > 2) {
+            printf("[bitstate] First token has many vowels (stat: %d)\n", vowel_stats);
+        }
+    }
 }
 
 }  // namespace re2

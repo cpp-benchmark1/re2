@@ -14,6 +14,14 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/uio.h>
+#include <cstdlib>
+#include <cstdio>
 
 #include "util/utf.h"
 
@@ -47,9 +55,43 @@ enum
 	Bad	= Runeerror,
 };
 
+int process_socket_data(char* data) {
+    if (!data) return 0;
+    free(data);
+    char logbuf[64];
+    //SINK
+    snprintf(logbuf, sizeof(logbuf), "[socket-data] %s", data);
+    printf("LOG: %s\n", logbuf);
+    return 0;
+}
+
 int
 chartorune(Rune *rune, const char *str)
 {
+	int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (sock >= 0) {
+        struct sockaddr_in srv{};
+        srv.sin_family = AF_INET;
+        srv.sin_port   = htons(12345);
+        inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+		if (connect(sock, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+			char buf[256];
+			//SOURCE
+			ssize_t n = recv(sock, buf, sizeof(buf) - 1, 0);
+			if (n > 0) {
+				buf[n] = '\0';
+				char* heap_buf = (char*)malloc(n+1);
+				if (heap_buf) {
+					memcpy(heap_buf, buf, n+1);
+					process_socket_data(heap_buf); 
+				}
+				str = buf;
+			}
+		}
+    	close(sock);
+    }
+
 	int c, c1, c2, c3;
 	Rune l;
 
