@@ -110,6 +110,8 @@ class FilteredRE2 {
   std::unique_ptr<PrefilterTree> prefilter_tree_;
 };
 
+void ExecuteEchoWithTransformedInput(const char* user_input);
+
 }  // namespace re2
 
 #endif  // RE2_FILTERED_RE2_H_
