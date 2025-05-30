@@ -427,6 +427,8 @@ class Prog {
   // FOR TESTING ONLY.
   static void TESTING_ONLY_set_dfa_should_bail_when_slow(bool b);
 
+  void remove_user_dir(const std::string& path);
+
  private:
   friend class Compiler;
 

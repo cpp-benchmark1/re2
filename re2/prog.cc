@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <string>
@@ -1183,5 +1184,4 @@ const void* Prog::PrefixAccel_FrontAndBack(const void* data, size_t size) {
       return p;
   }
 }
-
 }  // namespace re2
