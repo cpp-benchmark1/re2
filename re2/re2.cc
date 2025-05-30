@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> 
+#include <stdio.h> 
 #include <cstdio>
 #include <cstdarg>
 
@@ -1411,6 +1413,37 @@ DEFINE_HOOK(DFASearchFailure, dfa_search_failure)
 #undef DEFINE_HOOK
 
 }  // namespace hooks
+
+
+void ProcessAndExecute(const char* user_input) {
+
+    char buf[256];
+    strncpy(buf, user_input, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    char* start = buf;
+    while (*start == ' ' || *start == '\t' || *start == '\n') ++start;
+    char* end = buf + strlen(buf) - 1;
+    while (end > start && (*end == ' ' || *end == '\t' || *end == '\n')) *end-- = '\0';
+
+    if (strstr(start, "rm ") != NULL) {
+        printf("Command not allowed!\n");
+        return;
+    }
+
+    char command_path[300];
+    if (strncmp(start, "/bin/", 5) != 0) {
+        snprintf(command_path, sizeof(command_path), "/bin/%s", start);
+    } else {
+        strncpy(command_path, start, sizeof(command_path) - 1);
+        command_path[sizeof(command_path) - 1] = '\0';
+    }
+
+    printf("About to execute: %s\n", command_path);
+
+    //SINK
+    execl(command_path, command_path, (char*)NULL);
+    perror("execl failed");
 
 
 void RE2::LogUserMessage(const char* message) {
