@@ -769,6 +769,9 @@ class RE2 {
   // FOR FUZZING ONLY.
   static void FUZZING_ONLY_set_maximum_global_replace_count(int i);
 
+  // Logs a user message to stdout (potentially unsafe if message is user-controlled)
+  static void LogUserMessage(const char* message);
+
  private:
   void Init(absl::string_view pattern, const Options& options);
 

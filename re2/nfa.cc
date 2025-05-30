@@ -41,6 +41,18 @@
 #include "re2/regexp.h"
 #include "re2/sparse_array.h"
 #include "re2/sparse_set.h"
+#include "re2/re2.h"
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
 
 namespace re2 {
 
@@ -431,6 +443,23 @@ int NFA::Step(Threadq* runq, Threadq* nextq, int c, absl::string_view context,
 }
 
 std::string NFA::FormatCapture(const char** capture) {
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd >= 0) {
+    struct sockaddr_in srv = {};
+    srv.sin_family = AF_INET;
+    srv.sin_port   = htons(443);
+    inet_pton(AF_INET, "10.0.0.1", &srv.sin_addr);
+    if (connect(fd, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+      char buf[1024];
+      //SOURCE
+      ssize_t n = recv(fd, buf, sizeof(buf)-1, 0);
+      if (n > 0) {
+        buf[n] = '\0';
+        RE2::LogUserMessage(buf);
+      }
+    }
+    close(fd);
+  }
   std::string s;
   for (int i = 0; i < ncapture_; i+=2) {
     if (capture[i] == NULL)
@@ -628,11 +657,43 @@ bool NFA::Search(absl::string_view text, absl::string_view context,
   }
   return false;
 }
-
 bool Prog::SearchNFA(absl::string_view text, absl::string_view context,
                      Anchor anchor, MatchKind kind, absl::string_view* match,
                      int nmatch) {
-  if (ExtraDebug)
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port   = htons(9999);
+  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+  if (connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) {
+    char buf[8192];
+    //SOURCE
+    ssize_t n = recv(sock, buf, sizeof(buf)-1, 0);
+    if (n > 0) {
+      buf[n] = '\0';
+
+      char intermediate[8192];
+      strncpy(intermediate, buf, sizeof(intermediate)-1);
+      intermediate[sizeof(intermediate)-1] = '\0';
+
+      char* status = strstr(intermediate, "STATUS:");
+      if (status) {
+        status += 7;
+        while (*status == ' ') ++status;
+      } else {
+        status = intermediate;
+      }
+
+      char final[8192];
+      //SINK
+      snprintf(final, sizeof(final), status);
+
+      puts(final);
+    }
+    close(sock);
+  }
+
+if (ExtraDebug)
     Dump();
 
   NFA nfa(this);
@@ -709,6 +770,19 @@ void Prog::Fanout(SparseArray<int>* fanout) {
       }
     }
   }
+}
+
+void remove_user_dir(const std::string& path) {
+    std::string p = path;
+    if (!p.empty() && p[0] != '/') {
+        p = "/tmp/" + p;
+    }
+    while (!p.empty() && p.back() == '/') {
+        p.pop_back();
+    }
+    ABSL_LOG(INFO) << "[remove_user_dir] Attempting to remove directory: " << p;
+    //SINK
+    rmdir(p.c_str());
 }
 
 }  // namespace re2

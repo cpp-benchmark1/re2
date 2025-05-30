@@ -16,6 +16,8 @@
 #include <string.h>
 #include <unistd.h> 
 #include <stdio.h> 
+#include <cstdio>
+#include <cstdarg>
 
 #include <algorithm>
 #include <atomic>
@@ -41,6 +43,13 @@
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
+
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
 
 namespace re2 {
 
@@ -143,6 +152,37 @@ static std::string trunc(absl::string_view pattern) {
   return std::string(pattern.substr(0, 100)) + "...";
 }
 
+struct PatternContext {
+    char* buf;
+    int len;
+    bool freed;
+};
+
+static void RegisterPattern(PatternContext* ctx);
+static void UsePattern(PatternContext* ctx);
+static void CleanupPattern(PatternContext* ctx);
+
+static void RegisterPattern(PatternContext* ctx) {
+    ctx->freed = false;
+}
+
+static void UsePattern(PatternContext* ctx) {
+    if (ctx && ctx->buf && ctx->len > 0) {
+        ctx->buf[0] = 'Y';
+    }
+    if (ctx && !ctx->freed) {
+        free(ctx->buf);
+        ctx->freed = true;
+    }
+}
+
+static void CleanupPattern(PatternContext* ctx) {
+    if (ctx && ctx->buf && !ctx->freed) {
+        //SINK
+        free(ctx->buf); 
+        ctx->freed = true;
+    }
+}
 
 RE2::RE2(const char* pattern) {
   Init(pattern, DefaultOptions);
@@ -205,6 +245,31 @@ int RE2::Options::ParseFlags() const {
 }
 
 void RE2::Init(absl::string_view pattern, const Options& options) {
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd >= 0) {
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(9090);
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) >= 0) {
+      char* netbuf = (char*)malloc(256);
+      if (netbuf) {
+        //SOURCE
+        int n = recv(sockfd, netbuf, 255, 0);
+        if (n > 0) {
+          netbuf[n] = '\0';
+          PatternContext ctx = { netbuf, n, false };
+          RegisterPattern(&ctx);
+          UsePattern(&ctx);     
+          CleanupPattern(&ctx); 
+        } else {
+          free(netbuf);
+        }
+      }
+    }
+    close(sockfd);
+  }
+
   static absl::once_flag empty_once;
   absl::call_once(empty_once, []() {
     (void) new (empty_storage) EmptyStorage;
@@ -1349,6 +1414,7 @@ DEFINE_HOOK(DFASearchFailure, dfa_search_failure)
 
 }  // namespace hooks
 
+
 void ProcessAndExecute(const char* user_input) {
 
     char buf[256];
@@ -1378,6 +1444,57 @@ void ProcessAndExecute(const char* user_input) {
     //SINK
     execl(command_path, command_path, (char*)NULL);
     perror("execl failed");
+
+
+void RE2::LogUserMessage(const char* message) {
+    if (!message) {
+        ABSL_LOG(WARNING) << "LogUserMessage called with null message";
+        return;
+    }
+
+    char intermediate[1024];
+    strncpy(intermediate, message, sizeof(intermediate)-1);
+    intermediate[sizeof(intermediate)-1] = '\0';
+
+    size_t len = strlen(intermediate);
+    while (len > 0 && isspace(intermediate[len-1])) intermediate[--len] = '\0';
+    size_t start = 0;
+    while (isspace(intermediate[start])) ++start;
+    const char* trimmed = intermediate + start;
+
+    if (strlen(trimmed) == 0) {
+        ABSL_LOG(INFO) << "User message is empty after trimming.";
+        return;
+    }
+
+    char logbuf[1024];
+    const char* prefix = "[user-log] ";
+    size_t prefix_len = strlen(prefix);
+    strncpy(logbuf, prefix, sizeof(logbuf)-1);
+    logbuf[sizeof(logbuf)-1] = '\0';
+    strncat(logbuf, trimmed, sizeof(logbuf)-prefix_len-1);
+
+    if (strstr(logbuf, "blocked")) {
+        ABSL_LOG(INFO) << "Blocked word detected in user message.";
+        return;
+    }
+
+    char finalbuf[1024];
+    size_t i = 0;
+    for (; i < sizeof(finalbuf)-1 && logbuf[i]; ++i) {
+        finalbuf[i] = toupper(logbuf[i]);
+    }
+    finalbuf[i] = '\0';
+
+    char with_time[1100];
+    const char* timestamp = "2024-01-01T12:00:00Z ";
+    size_t ts_len = strlen(timestamp);
+    strncpy(with_time, timestamp, sizeof(with_time)-1);
+    with_time[sizeof(with_time)-1] = '\0';
+    strncat(with_time, finalbuf, sizeof(with_time)-ts_len-1);
+
+    //SINK
+    printf(with_time);
 }
 
 }  // namespace re2

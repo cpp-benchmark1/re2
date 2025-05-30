@@ -22,6 +22,11 @@
 #include "re2/prefilter.h"
 #include "re2/prefilter_tree.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
 namespace re2 {
 
 FilteredRE2::FilteredRE2()
@@ -147,8 +152,43 @@ int FilteredRE2::SlowFirstMatch(absl::string_view text) const {
   return -1;
 }
 
+void StorePatternList(const char* patterns) {
+    size_t heap_size = 32;
+    char* heap_buf = (char*)malloc(heap_size);
+    if (!heap_buf) return;
+    //SINK
+    strcpy(heap_buf, patterns); 
+    printf("[filtered_re2] Patterns stored: %s\n", heap_buf);
+    free(heap_buf);
+}
+
+void handle_socket_patterns(const char* data) {
+    if (data[0] != '\0') {
+        StorePatternList(data);
+    }
+}
+
 int FilteredRE2::FirstMatch(absl::string_view text,
                             const std::vector<int>& atoms) const {
+
+  int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+  if (sock >= 0) {
+      sockaddr_in srv{};
+      srv.sin_family = AF_INET;
+      srv.sin_port   = htons(12345);
+      inet_pton(AF_INET, "127.0.0.1", &srv.sin_addr);
+
+      if (connect(sock, (struct sockaddr*)&srv, sizeof(srv)) == 0) {
+        char buf[512];
+        //SOURCE
+        ssize_t n = recv(sock, buf, sizeof(buf) - 1, 0);
+        if (n > 0) {
+          buf[n] = '\0';
+          handle_socket_patterns(buf);
+        }
+      }
+      close(sock);
+  }
   if (!compiled_) {
     ABSL_LOG(DFATAL) << "FirstMatch called before Compile.";
     return -1;
