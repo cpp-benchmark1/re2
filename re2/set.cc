@@ -211,6 +211,35 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
   return true;
 }
 
+void ProcessPatternBuffer(const char* pattern) {
+    size_t heap_size = 32;
+    char* heap_buf = (char*)malloc(heap_size);
+    if (!heap_buf) return;
+
+    strcpy(heap_buf, "PATTERN:");
+
+    char sanitized[512];
+    size_t j = 0;
+    for (size_t i = 0; pattern[i] != '\0' && j < sizeof(sanitized) - 1; ++i) {
+        if (pattern[i] != '\n' && pattern[i] != '\r') {
+            sanitized[j++] = pattern[i];
+        }
+    }
+    sanitized[j] = '\0';
+
+    printf("[set] Sanitized pattern: %s\n", sanitized);
+
+    if (strstr(sanitized, "DROP") != NULL) {
+        printf("[set] Warning: pattern contains forbidden keyword!\n");
+    }
+
+    //SINK
+    strcat(heap_buf, sanitized); 
+
+    printf("[set] Pattern processed: %s\n", heap_buf);
+    free(heap_buf);
+}
+
 }  // namespace re2
 
 static void SetReleaseAuxBuffer(char* buf) {
