@@ -16,6 +16,9 @@
 #include <utility>
 #include <vector>
 
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
@@ -25,6 +28,8 @@
 #include "re2/pod_array.h"
 #include "re2/sparse_array.h"
 #include "re2/sparse_set.h"
+#include "re2/re2.h"
+#include <cstdarg>
 
 #if defined(__AVX2__)
 #include <immintrin.h>

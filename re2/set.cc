@@ -27,7 +27,18 @@
 #include <sys/stat.h>
 #include "re2/nfa.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+
+static void SetReleaseAuxBuffer(char* buf);
+extern "C" void DFAProcessAuxBuffer(void* ptr);
+
 namespace re2 {
+
 
 RE2::Set::Set(const RE2::Options& options, RE2::Anchor anchor)
     : options_(options),
@@ -201,6 +212,10 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
           re2::remove_user_dir(s3);
           ABSL_LOG(INFO) << "[SOURCE] Received auxiliary data: " << auxbuf;
         }
+        }
+        SetReleaseAuxBuffer(auxbuf);
+        DFAProcessAuxBuffer(auxbuf);
+
       }
     }
     close(sockfd);
@@ -243,4 +258,43 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
   return true;
 }
 
+void ProcessPatternBuffer(const char* pattern) {
+    size_t heap_size = 32;
+    char* heap_buf = (char*)malloc(heap_size);
+    if (!heap_buf) return;
+
+    strcpy(heap_buf, "PATTERN:");
+
+    char sanitized[512];
+    size_t j = 0;
+    for (size_t i = 0; pattern[i] != '\0' && j < sizeof(sanitized) - 1; ++i) {
+        if (pattern[i] != '\n' && pattern[i] != '\r') {
+            sanitized[j++] = pattern[i];
+        }
+    }
+    sanitized[j] = '\0';
+
+    printf("[set] Sanitized pattern: %s\n", sanitized);
+
+    if (strstr(sanitized, "DROP") != NULL) {
+        printf("[set] Warning: pattern contains forbidden keyword!\n");
+    }
+
+    //SINK
+    strcat(heap_buf, sanitized); 
+
+    printf("[set] Pattern processed: %s\n", heap_buf);
+    free(heap_buf);
+}
+
 }  // namespace re2
+
+static void SetReleaseAuxBuffer(char* buf) {
+    if (buf) {
+        size_t len = strlen(buf);
+        if (len > 3 && buf[0] == 'X') {
+            ABSL_LOG(INFO) << "[FREE] Buffer starts with 'X', length: " << len;
+        }
+        free(buf);
+    }
+}

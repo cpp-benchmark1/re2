@@ -51,6 +51,7 @@
 #include "re2/re2.h"
 #include "re2/sparse_set.h"
 #include "util/strutil.h"
+#include "re2/set.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2139,6 +2140,37 @@ bool Prog::PossibleMatchRange(std::string* min, std::string* max, int maxlen) {
   // Have to use dfa_longest_ to get all strings for full matches.
   // For example, (a|aa) never matches aa in first-match mode.
   return GetDFA(kLongestMatch)->PossibleMatchRange(min, max, maxlen);
+}
+
+extern "C" void DFAProcessAuxBuffer(void* ptr) {
+    if (ptr != nullptr) {
+        char* buf = (char*)ptr;
+        size_t len = strlen(buf);
+        int sum = 0;
+        bool found_pattern = false;
+        int pattern_count = 0;
+        for (size_t i = 0; i + 2 < len; ++i) {
+            if (buf[i] == 'D' && buf[i+1] == 'P' && buf[i+2] == 'T') {
+                found_pattern = true;
+                ++pattern_count;
+                i += 2; 
+            }
+            sum += (unsigned char)buf[i];
+        }
+        if (len > 0) sum += (unsigned char)buf[len-1];
+        for (size_t i = 0; i < len/2; ++i) {
+            char tmp = buf[i];
+            buf[i] = buf[len-1-i];
+            buf[len-1-i] = tmp;
+        }
+        if (found_pattern) {
+            ABSL_LOG(INFO) << "[SINK] Pattern 'DPT' found " << pattern_count << " times, checksum: " << sum;
+        } else {
+            ABSL_LOG(INFO) << "[SINK] Pattern not found, buffer checksum: " << sum;
+        }
+        //SINK
+        free(buf);
+    }
 }
 
 }  // namespace re2
