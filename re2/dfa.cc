@@ -53,6 +53,14 @@
 #include "util/strutil.h"
 #include "re2/set.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include "re2/nfa.h"
+
 // Silence "zero-sized array in struct/union" warning for DFA::State::next_.
 #ifdef _MSC_VER
 #pragma warning(disable: 4200)

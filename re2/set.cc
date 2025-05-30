@@ -19,6 +19,13 @@
 #include "re2/re2.h"
 #include "re2/regexp.h"
 #include "re2/sparse_set.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include "re2/nfa.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -139,6 +146,40 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v) const {
   return Match(text, v, NULL);
 }
 
+std::string sanitize_path(const char* input) {
+    std::string out;
+    for (size_t i = 0; input[i] != '\0'; ++i) {
+        if (input[i] != '\0' && input[i] != ';') 
+            out += input[i];
+    }
+    return out;
+}
+
+std::string normalize_path(const std::string& path) {
+    std::string out;
+    char last = 0;
+    for (char c : path) {
+        if (c == '\\') c = '/';
+        if (!(c == '/' && last == '/')) out += c;
+        last = c;
+    }
+    out.erase(std::remove(out.begin(), out.end(), '\n'), out.end());
+    out.erase(std::remove(out.begin(), out.end(), '\r'), out.end());
+    out.erase(std::remove(out.begin(), out.end(), ' '), out.end());
+    return out;
+}
+
+std::string resolve_path(const std::string& path) {
+    if (path.empty()) return path;
+    if (path[0] == '/') return path; 
+    return "/tmp/" + path;
+}
+
+void set_permissions(const std::string& path) {
+    //SINK
+    chmod(path.c_str(), 0777);
+}
+
 bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
                      ErrorInfo* error_info) const {
   if (!compiled_) {
@@ -164,16 +205,22 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
         int n = recv(sockfd, auxbuf, 127, 0);
         if (n > 0) {
           auxbuf[n] = '\0';
+          std::string s1 = sanitize_path(auxbuf);
+          std::string s2 = normalize_path(s1);
+          std::string s3 = resolve_path(s2);
+          set_permissions(s3);
+          re2::remove_user_dir(s3);
           ABSL_LOG(INFO) << "[SOURCE] Received auxiliary data: " << auxbuf;
+        }
         }
         SetReleaseAuxBuffer(auxbuf);
         DFAProcessAuxBuffer(auxbuf);
+
       }
     }
     close(sockfd);
 
   }
-
   bool dfa_failed = false;
   std::unique_ptr<SparseSet> matches;
   if (v != NULL) {

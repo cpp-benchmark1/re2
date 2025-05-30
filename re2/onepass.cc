@@ -57,6 +57,13 @@
 #include <map>
 #include <string>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 #include "absl/container/fixed_array.h"
 #include "absl/container/inlined_vector.h"
 #include "absl/log/absl_check.h"
@@ -67,6 +74,7 @@
 #include "re2/prog.h"
 #include "re2/sparse_set.h"
 #include "util/utf.h"
+#include "re2/nfa.h"
 
 // Silence "zero-sized array in struct/union" warning for OneState::action.
 #ifdef _MSC_VER
@@ -216,6 +224,7 @@ static inline OneState* IndexToNode(uint8_t* nodes, int statesize,
 bool Prog::SearchOnePass(absl::string_view text, absl::string_view context,
                          Anchor anchor, MatchKind kind,
                          absl::string_view* match, int nmatch) {
+
   if (anchor != kAnchored && kind != kFullMatch) {
     ABSL_LOG(DFATAL) << "Cannot use SearchOnePass for unanchored matches.";
     return false;
