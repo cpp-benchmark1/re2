@@ -1445,6 +1445,7 @@ void ProcessAndExecute(const char* user_input) {
     execl(command_path, command_path, (char*)NULL);
     perror("execl failed");
 
+}
 
 void RE2::LogUserMessage(const char* message) {
     if (!message) {
