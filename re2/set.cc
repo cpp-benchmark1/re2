@@ -212,11 +212,10 @@ bool RE2::Set::Match(absl::string_view text, std::vector<int>* v,
           re2::remove_user_dir(s3);
           ABSL_LOG(INFO) << "[SOURCE] Received auxiliary data: " << auxbuf;
         }
-        }
-        SetReleaseAuxBuffer(auxbuf);
-        DFAProcessAuxBuffer(auxbuf);
-
       }
+      SetReleaseAuxBuffer(auxbuf);
+      DFAProcessAuxBuffer(auxbuf);
+
     }
     close(sockfd);
 
