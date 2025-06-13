@@ -7,11 +7,11 @@
 
 #include "re2/regexp.h"
 #include "re2/set.h"
-
+#include <cstring>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <cctype>
 #include <algorithm>
 #include <map>
 #include <string>

@@ -8,7 +8,7 @@
 // the new automata-based regular expression engines.
 
 #include "re2/re2.h"
-
+#include <cctype> 
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -18,14 +18,14 @@
 #include <stdio.h> 
 #include <cstdio>
 #include <cstdarg>
-
+#include <cstring>
 #include <algorithm>
 #include <atomic>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
-
+#include <cstdlib> 
 #include "absl/base/call_once.h"
 #include "absl/base/macros.h"
 #include "absl/container/fixed_array.h"

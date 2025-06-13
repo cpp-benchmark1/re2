@@ -26,12 +26,12 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <cstdlib>
 #include <algorithm>
 #include <deque>
 #include <string>
 #include <utility>
-
+#include <cstring>
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/strings/str_format.h"
@@ -42,7 +42,7 @@
 #include "re2/sparse_array.h"
 #include "re2/sparse_set.h"
 #include "re2/re2.h"
-
+#include <cstdio>
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>

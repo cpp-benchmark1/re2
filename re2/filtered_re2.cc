@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 #include "re2/filtered_re2.h"
-
+#include <cstring>
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <cstdlib>
 #include <string>
 #include <utility>
 #include <vector>

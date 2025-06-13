@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
+#include <cstring>
 #include <emscripten/bind.h>
 #include "re2/prog.h"
 #include "re2/re2.h"

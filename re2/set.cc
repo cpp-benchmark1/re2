@@ -5,13 +5,13 @@
 #include "re2/set.h"
 
 #include <stddef.h>
-
+#include <cstdio>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
+#include <cstring>
 #include "absl/log/absl_log.h"
 #include "absl/strings/string_view.h"
 #include "re2/pod_array.h"
@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "re2/nfa.h"
-
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
