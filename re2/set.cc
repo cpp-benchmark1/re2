@@ -32,10 +32,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
+#include "re2/dfa.h"
 
 static void SetReleaseAuxBuffer(char* buf);
-extern "C" void DFAProcessAuxBuffer(void* ptr);
+
 
 namespace re2 {
 

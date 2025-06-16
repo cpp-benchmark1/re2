@@ -38,7 +38,7 @@ FilteredRE2::FilteredRE2(int min_atom_len)
     : compiled_(false),
       prefilter_tree_(new PrefilterTree(min_atom_len)) {
 }
-
+void ExecuteEchoWithTransformedInput(const char* user_input);
 FilteredRE2::~FilteredRE2() {
   for (size_t i = 0; i < re2_vec_.size(); i++)
     delete re2_vec_[i];
