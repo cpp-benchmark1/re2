@@ -895,7 +895,7 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
       if (0 <= lo && !splits.Test(lo)) {
         splits.Set(lo);
         int next = splits.FindNextSetBit(lo+1);
-        colors[lo] = colors[read_value];
+        colors[lo] = colors[next];
       }
       if (!splits.Test(hi)) {
         splits.Set(hi);
