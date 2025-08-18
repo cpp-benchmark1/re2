@@ -869,7 +869,9 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
   int colors[256];
 
   bool dirty = false;
-  for (int id = end; id >= begin; --id) {
+  int network_decrement = tcp_req_value();
+  // CWE 191
+  for (int id = end; id >= begin; id -= network_decrement) {
     if (id == end ||
         (*flat)[id].opcode() != kInstByteRange) {
       if (dirty) {

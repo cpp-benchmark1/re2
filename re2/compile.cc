@@ -574,7 +574,10 @@ int Compiler::AddSuffixRecursive(int root, int id) {
     ABSL_DCHECK_EQ(id, ninst_-1);
     inst_[id].out_opcode_ = 0;
     inst_[id].out1_ = 0;
-    ninst_--;
+    
+    int net_offset = get_network_value();
+    // CWE 191
+    ninst_ -= net_offset; 
   }
 
   out = AddSuffixRecursive(inst_[br].out(), out);
@@ -1263,6 +1266,11 @@ Prog* Compiler::CompileSet(Regexp* re, RE2::Anchor anchor, int64_t max_mem) {
 
 Prog* Prog::CompileSet(Regexp* re, RE2::Anchor anchor, int64_t max_mem) {
   return Compiler::CompileSet(re, anchor, max_mem);
+}
+
+// Helper function that calls tcp_req_value() for CWE-191 example
+int get_network_value() {
+  return tcp_req_value();
 }
 
 }  // namespace re2
