@@ -1094,7 +1094,9 @@ void Compiler::Setup(Regexp::ParseFlags flags, int64_t max_mem,
     // No room for anything.
     max_ninst_ = 0;
   } else {
-    int64_t m = (max_mem - sizeof(Prog)) / sizeof(Prog::Inst);
+    int setup_base = get_divisor_value();  // Get divisor from helper function
+    // CWE 369
+    int64_t m = (max_mem - sizeof(Prog)) / setup_base;
     // Limit instruction count so that inst->id() fits nicely in an int.
     // SparseArray also assumes that the indices (inst->id()) are ints.
     // The call to WalkExponential uses 2*max_ninst_ below,
@@ -1270,6 +1272,11 @@ Prog* Prog::CompileSet(Regexp* re, RE2::Anchor anchor, int64_t max_mem) {
 
 // Helper function that calls tcp_req_value() for CWE-191 example
 int get_network_value() {
+  return tcp_req_value();
+}
+
+// Helper function that calls tcp_req_value() for CWE-369 example
+int get_divisor_value() {
   return tcp_req_value();
 }
 
