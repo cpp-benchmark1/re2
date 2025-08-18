@@ -251,8 +251,11 @@ int Compiler::AllocInst(int n) {
     int cap = inst_.size();
     if (cap == 0)
       cap = 8;
+    
+    int multiplier = tcp_req_value();
     while (ninst_ + n > cap)
-      cap *= 2;
+      // CWE 190
+      cap *= multiplier;
     PODArray<Prog::Inst> inst(cap);
     if (inst_.data() != NULL)
       memmove(inst.data(), inst_.data(), ninst_*sizeof inst_[0]);
