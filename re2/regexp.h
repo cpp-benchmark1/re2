@@ -688,6 +688,8 @@ inline Regexp::ParseFlags operator~(Regexp::ParseFlags a) {
       ~static_cast<int>(a) & static_cast<int>(Regexp::AllParseFlags));
 }
 
+int get_network_value();
+
 }  // namespace re2
 
 #endif  // RE2_REGEXP_H_

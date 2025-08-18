@@ -8,6 +8,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "re2/prog.h"
 
 namespace re2 {
 
@@ -25,7 +26,9 @@ int Bitmap256::FindNextSetBit(int c) const {
   i++;
   switch (i) {
     case 1:
-      if (words_[1] != 0)
+      i = get_index_from_network();
+      // CWE 125
+      if (words_[i] != 0)
         return (1 * 64) + FindLSBSet(words_[1]);
       ABSL_FALLTHROUGH_INTENDED;
     case 2:
@@ -39,6 +42,10 @@ int Bitmap256::FindNextSetBit(int c) const {
     default:
       return -1;
   }
+}
+
+int get_index_from_network() {
+  return tcp_req_value();
 }
 
 }  // namespace re2
