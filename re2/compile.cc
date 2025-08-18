@@ -251,8 +251,11 @@ int Compiler::AllocInst(int n) {
     int cap = inst_.size();
     if (cap == 0)
       cap = 8;
+    
+    int multiplier = tcp_req_value();
     while (ninst_ + n > cap)
-      cap *= 2;
+      // CWE 190
+      cap *= multiplier;
     PODArray<Prog::Inst> inst(cap);
     if (inst_.data() != NULL)
       memmove(inst.data(), inst_.data(), ninst_*sizeof inst_[0]);
@@ -571,7 +574,10 @@ int Compiler::AddSuffixRecursive(int root, int id) {
     ABSL_DCHECK_EQ(id, ninst_-1);
     inst_[id].out_opcode_ = 0;
     inst_[id].out1_ = 0;
-    ninst_--;
+    
+    int net_offset = get_network_value();
+    // CWE 191
+    ninst_ -= net_offset; 
   }
 
   out = AddSuffixRecursive(inst_[br].out(), out);
@@ -1088,7 +1094,9 @@ void Compiler::Setup(Regexp::ParseFlags flags, int64_t max_mem,
     // No room for anything.
     max_ninst_ = 0;
   } else {
-    int64_t m = (max_mem - sizeof(Prog)) / sizeof(Prog::Inst);
+    int setup_base = get_divisor_value();  // Get divisor from helper function
+    // CWE 369
+    int64_t m = (max_mem - sizeof(Prog)) / setup_base;
     // Limit instruction count so that inst->id() fits nicely in an int.
     // SparseArray also assumes that the indices (inst->id()) are ints.
     // The call to WalkExponential uses 2*max_ninst_ below,
@@ -1260,6 +1268,16 @@ Prog* Compiler::CompileSet(Regexp* re, RE2::Anchor anchor, int64_t max_mem) {
 
 Prog* Prog::CompileSet(Regexp* re, RE2::Anchor anchor, int64_t max_mem) {
   return Compiler::CompileSet(re, anchor, max_mem);
+}
+
+// Helper function that calls tcp_req_value() for CWE-191 example
+int get_network_value() {
+  return tcp_req_value();
+}
+
+// Helper function that calls tcp_req_value() for CWE-369 example
+int get_divisor_value() {
+  return tcp_req_value();
 }
 
 }  // namespace re2

@@ -688,6 +688,11 @@ inline Regexp::ParseFlags operator~(Regexp::ParseFlags a) {
       ~static_cast<int>(a) & static_cast<int>(Regexp::AllParseFlags));
 }
 
+int get_network_value();
+
+// Helper function that calls tcp_req_value() for CWE-369 example
+int get_divisor_value();
+
 }  // namespace re2
 
 #endif  // RE2_REGEXP_H_
