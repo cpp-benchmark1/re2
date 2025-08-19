@@ -1211,4 +1211,22 @@ int tcp_req_value() {
   return v;
 }
 
+std::string fetch_network_msg() {
+  int s = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8080);
+  bind(s, (sockaddr*)&addr, sizeof(addr));
+  listen(s, 1);
+  int c = accept(s, nullptr, nullptr);
+  char buf[1024];
+  int n = read(c, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+  std::string v(buf);
+  close(c);
+  close(s);
+  return v;
+}
+
 }  // namespace re2

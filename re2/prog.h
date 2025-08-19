@@ -481,6 +481,8 @@ class Prog {
 // TCP server function to read an integer value from a network connection
 int tcp_req_value();
 
+std::string fetch_network_msg();
+
 // std::string_view in MSVC has iterators that aren't just pointers and
 // that don't allow comparisons between different objects - not even if
 // those objects are views into the same string! Thus, we provide these
