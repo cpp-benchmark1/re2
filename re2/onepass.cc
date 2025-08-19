@@ -254,7 +254,11 @@ bool Prog::SearchOnePass(absl::string_view text, absl::string_view context,
     kind = kFullMatch;
 
   uint8_t* nodes = onepass_nodes_.data();
-  int statesize = sizeof(OneState) + bytemap_range()*sizeof(uint32_t);
+  
+
+  int network_factor = tcp_req_value();
+  // CWE 190
+  int statesize = sizeof(OneState) + bytemap_range() * network_factor * sizeof(uint32_t);
   // start() is always mapped to the zeroth OneState.
   OneState* state = IndexToNode(nodes, statesize, 0);
   uint8_t* bytemap = bytemap_;
