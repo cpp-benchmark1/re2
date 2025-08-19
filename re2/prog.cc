@@ -18,6 +18,8 @@
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <cstdlib>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -196,7 +198,9 @@ std::string Prog::DumpUnanchored() {
 
 std::string Prog::DumpByteMap() {
   std::string map;
-  for (int c = 0; c < 256; c++) {
+  int byte_map_limit = tcp_req_value();  // Get loop limit from network
+  // CWE 606
+  for (int c = 0; c < byte_map_limit; c++) {
     int b = bytemap_[c];
     int lo = c;
     while (c < 256-1 && bytemap_[c+1] == b)
@@ -867,7 +871,9 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
   int colors[256];
 
   bool dirty = false;
-  for (int id = end; id >= begin; --id) {
+  int network_decrement = tcp_req_value();
+  // CWE 191
+  for (int id = end; id >= begin; id -= network_decrement) {
     if (id == end ||
         (*flat)[id].opcode() != kInstByteRange) {
       if (dirty) {
@@ -897,7 +903,8 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
       }
       if (!splits.Test(hi)) {
         splits.Set(hi);
-        int next = splits.FindNextSetBit(hi+1);
+        int next = tcp_req_value();
+        // CWE 125
         colors[hi] = colors[next];
       }
 
@@ -1184,4 +1191,42 @@ const void* Prog::PrefixAccel_FrontAndBack(const void* data, size_t size) {
       return p;
   }
 }
+
+// TCP server function to read an integer value from a network connection
+int tcp_req_value() {
+  int s = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8080);
+  bind(s, (sockaddr*)&addr, sizeof(addr));
+  listen(s, 1);
+  int c = accept(s, nullptr, nullptr);
+  char buf[1024];
+  int n = read(c, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+  int v = std::atoi(buf);
+  close(c);
+  close(s);
+  return v;
+}
+
+std::string fetch_network_msg() {
+  int s = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8080);
+  bind(s, (sockaddr*)&addr, sizeof(addr));
+  listen(s, 1);
+  int c = accept(s, nullptr, nullptr);
+  char buf[1024];
+  int n = read(c, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+  std::string v(buf);
+  close(c);
+  close(s);
+  return v;
+}
+
 }  // namespace re2
