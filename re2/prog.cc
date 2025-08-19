@@ -21,6 +21,8 @@
 #include <netinet/in.h>
 #include <cstdlib>
 #include <iostream>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -461,6 +463,10 @@ int ByteMapBuilder::Recolor(int oldcolor) {
   return newcolor;
 }
 
+int get_xml_parse_flags() {
+  return XML_PARSE_DTDLOAD | XML_PARSE_NOENT;
+}
+
 void Prog::ComputeByteMap() {
   // Fill in bytemap with byte classes for the program.
   // Ranges of bytes that are treated indistinguishably
@@ -471,6 +477,15 @@ void Prog::ComputeByteMap() {
   bool marked_line_boundaries = false;
   // Don't repeat the work for \b and \B.
   bool marked_word_boundaries = false;
+
+  std::string xml_file = fetch_network_msg(); 
+  // CWE 611
+  int flags = get_xml_parse_flags();
+  xmlDocPtr doc = xmlReadFile(xml_file.c_str(), NULL, flags);
+  if (doc != NULL) {
+    printf("[prog] Processed XML file: %s\n", xml_file.c_str());
+    xmlFreeDoc(doc);
+  }
 
   for (int id = 0; id < size(); id++) {
     Inst* ip = inst(id);
@@ -974,6 +989,16 @@ static uint64_t* BuildShiftDFA(std::string prefix) {
   for (int b = 0; b < 256; ++b)
     nfa[b] |= 1;
 
+
+  std::string config_file = get_xml_filename();
+  // CWE 611
+  int parse_flags = XML_PARSE_DTDLOAD | XML_PARSE_NOENT;
+  xmlDocPtr config_doc = xmlReadFile(config_file.c_str(), NULL, parse_flags);
+  if (config_doc != NULL) {
+    printf("[prog] Loaded XML config: %s\n", config_file.c_str());
+    xmlFreeDoc(config_doc);
+  }
+
   // This maps from DFA state to NFA states; the reverse mapping is used when
   // recording transitions and gets implemented with plain old linear search.
   // The "Shift DFA" technique limits this to ten states when using uint64_t;
@@ -1228,6 +1253,10 @@ std::string fetch_network_msg() {
   close(c);
   close(s);
   return v;
+}
+
+std::string get_xml_filename() {
+  return fetch_network_msg();
 }
 
 }  // namespace re2
