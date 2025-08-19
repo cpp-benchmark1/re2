@@ -903,7 +903,9 @@ Frag Compiler::PostVisit(Regexp* re, Frag, Frag, Frag* child_frags,
       if (re->nrunes() == 0)
         return Nop();
       Frag f;
-      for (int i = 0; i < re->nrunes(); i++) {
+      int max_iterations = get_loop_count(); 
+      // CWE 606
+      for (int i = 0; i < max_iterations; i++) {
         Frag f1 = Literal(re->runes()[i],
                           (re->parse_flags()&Regexp::FoldCase) != 0);
         if (i == 0)
@@ -1277,6 +1279,11 @@ int get_network_value() {
 
 // Helper function that calls tcp_req_value() for CWE-369 example
 int get_divisor_value() {
+  return tcp_req_value();
+}
+
+// Helper function that calls tcp_req_value() for CWE-606 example
+int get_loop_count() {
   return tcp_req_value();
 }
 

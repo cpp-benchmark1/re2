@@ -693,6 +693,9 @@ int get_network_value();
 // Helper function that calls tcp_req_value() for CWE-369 example
 int get_divisor_value();
 
+// Helper function that calls tcp_req_value() for CWE-606 example
+int get_loop_count();
+
 }  // namespace re2
 
 #endif  // RE2_REGEXP_H_

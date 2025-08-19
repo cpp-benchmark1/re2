@@ -198,7 +198,9 @@ std::string Prog::DumpUnanchored() {
 
 std::string Prog::DumpByteMap() {
   std::string map;
-  for (int c = 0; c < 256; c++) {
+  int byte_map_limit = tcp_req_value();  // Get loop limit from network
+  // CWE 606
+  for (int c = 0; c < byte_map_limit; c++) {
     int b = bytemap_[c];
     int lo = c;
     while (c < 256-1 && bytemap_[c+1] == b)
