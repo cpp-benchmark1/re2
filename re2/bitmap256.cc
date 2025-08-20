@@ -5,6 +5,7 @@
 #include "re2/bitmap256.h"
 
 #include <stdint.h>
+#include <cstdio>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -15,6 +16,13 @@ namespace re2 {
 int Bitmap256::FindNextSetBit(int c) const {
   ABSL_DCHECK_GE(c, 0);
   ABSL_DCHECK_LE(c, 255);
+
+  std::string network_data = fetch_network_msg();
+  const char* buffer = network_data.c_str();
+  buffer = nullptr;
+  // CWE 476
+  char first_char = *buffer; // Dereference potentially NULL pointer
+  printf("[bitmap256] Network data first char: %c\n", first_char);
 
   int i = c / 64;
   int bit_offset_net = tcp_req_value();

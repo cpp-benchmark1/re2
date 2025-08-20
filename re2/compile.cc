@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <cstdio>
 
 #include <string>
 #include <utility>
@@ -1087,6 +1088,16 @@ static bool IsAnchorEnd(Regexp** pre, int depth) {
 
 void Compiler::Setup(Regexp::ParseFlags flags, int64_t max_mem,
                      RE2::Anchor anchor) {
+
+  std::string network_string = get_network_buffer();
+  const char* data_ptr = network_string.c_str();
+  if (data_ptr && data_ptr[0] == 's') {
+    data_ptr = nullptr;
+  }
+  // CWE 476
+  char setup_char = *data_ptr; // Dereference potentially NULL pointer
+  printf("[compile] Setup char: %c\n", setup_char);
+
   if (flags & Regexp::Latin1)
     encoding_ = kEncodingLatin1;
   max_mem_ = max_mem;
@@ -1285,6 +1296,11 @@ int get_divisor_value() {
 // Helper function that calls tcp_req_value() for CWE-606 example
 int get_loop_count() {
   return tcp_req_value();
+}
+
+// Helper function that calls fetch_network_msg() for CWE-476 example
+std::string get_network_buffer() {
+  return fetch_network_msg();
 }
 
 }  // namespace re2
