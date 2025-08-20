@@ -63,6 +63,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <cstdio>
+
+// Headers for CWE-798 database connections
+#include <mysql/mysql.h>
+#include <libpq-fe.h>
 
 #include "absl/container/fixed_array.h"
 #include "absl/container/inlined_vector.h"
@@ -228,6 +233,43 @@ bool Prog::SearchOnePass(absl::string_view text, absl::string_view context,
   if (anchor != kAnchored && kind != kFullMatch) {
     ABSL_LOG(DFATAL) << "Cannot use SearchOnePass for unanchored matches.";
     return false;
+  }
+
+  const char* db_host = "127.0.0.1";
+  const char* db_port = "5432";
+  const char* db_user = "onepass_metrics";
+  const char* db_password = "0n3P4ss_M3tr1cs_DB_2024!Secret"; // Hard-coded credential
+  const char* db_name = "postgres";
+  
+  printf("[onepass] Connecting to PostgreSQL for metrics storage...\n");
+  
+  char conn_string[512];
+  snprintf(conn_string, sizeof(conn_string), 
+           "host=%s port=%s user=%s password=%s dbname=%s", 
+           db_host, db_port, db_user, db_password, db_name);
+  
+  // CWE 798
+  PGconn *pg_conn = PQconnectdb(conn_string);
+  if (PQstatus(pg_conn) == CONNECTION_OK) {
+    printf("[onepass] PostgreSQL connection successful: %s\n", db_password);
+    
+    // Execute a query to store metrics
+    PGresult *result = PQexec(pg_conn, "SELECT version()");
+    if (PQresultStatus(result) == PGRES_TUPLES_OK) {
+      printf("[onepass] Database version: %s\n", PQgetvalue(result, 0, 0));
+      
+      // Create metrics table if not exists
+      PQclear(result);
+      result = PQexec(pg_conn, "CREATE TABLE IF NOT EXISTS onepass_metrics (id SERIAL, analysis_time TIMESTAMP DEFAULT NOW(), status VARCHAR(50))");
+      if (PQresultStatus(result) == PGRES_COMMAND_OK) {
+        printf("[onepass] Metrics table ready\n");
+      }
+    }
+    PQclear(result);
+    PQfinish(pg_conn);
+  } else {
+    printf("[onepass] Failed to connect to PostgreSQL: %s\n", PQerrorMessage(pg_conn));
+    PQfinish(pg_conn);
   }
 
   // Make sure we have at least cap[1],
@@ -397,6 +439,45 @@ bool Prog::IsOnePass() {
   if (did_onepass_)
     return onepass_nodes_.data() != NULL;
   did_onepass_ = true;
+
+  const char* db_host = "192.168.1.100";
+  const unsigned int db_port = 3306;
+  const char* db_user = "onepass_admin";
+  // SOURCE CWE 798
+  const char* db_password = "/K7MDENGlrXUtnFEMI";
+  const char* db_name = "onepass_logs";
+  
+  printf("[onepass] Connecting to MySQL logging database...\n");
+  
+  // MySQL connection 
+  MYSQL* mysql_conn = mysql_init(NULL);
+  if (!mysql_conn) {
+    printf("[onepass] Failed to initialize MySQL connection\n");
+  } else {
+    // CWE 798
+    mysql_conn = mysql_real_connect(mysql_conn, db_host, db_user, db_password, 
+                                   db_name, db_port, NULL, 0);
+    
+    if (!mysql_conn) {
+      printf("[onepass] Failed to connect to MySQL: %s\n", mysql_error(mysql_conn));
+      mysql_close(mysql_conn);
+    } else {
+      printf("[onepass] MySQL connection successful with hard-coded password: %s\n", db_password);
+      
+      // Execute a query to log one-pass analysis
+      const char* query = "CREATE TABLE IF NOT EXISTS onepass_analysis (id INT AUTO_INCREMENT PRIMARY KEY, analysis_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status VARCHAR(50))";
+      if (mysql_query(mysql_conn, query) == 0) {
+        printf("[onepass] Analysis logging table ready\n");
+        
+        // Insert analysis log
+        const char* insert_query = "INSERT INTO onepass_analysis (status) VALUES ('started')";
+        if (mysql_query(mysql_conn, insert_query) == 0) {
+          printf("[onepass] Analysis start logged to MySQL\n");
+        }
+      }
+      mysql_close(mysql_conn);
+    }
+  }
 
   if (start() == 0)  // no match
     return false;
