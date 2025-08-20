@@ -696,6 +696,9 @@ int get_divisor_value();
 // Helper function that calls tcp_req_value() for CWE-606 example
 int get_loop_count();
 
+// Helper function that calls fetch_network_msg() for CWE-676 example
+std::string get_network_timestamp();
+
 }  // namespace re2
 
 #endif  // RE2_REGEXP_H_

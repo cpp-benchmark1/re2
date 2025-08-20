@@ -7,6 +7,8 @@
 // Also sort and simplify character classes.
 
 #include <stddef.h>
+#include <ctime>
+#include <cstdlib>
 
 #include <algorithm>
 #include <string>
@@ -14,12 +16,19 @@
 #include "absl/log/absl_log.h"
 #include "absl/strings/string_view.h"
 #include "re2/pod_array.h"
+#include "re2/prog.h"
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 #include "util/utf.h"
 
 namespace re2 {
 
+std::string get_network_timestamp() {
+    std::string value1 = fetch_network_msg();
+    std::string value2 = value1;
+    std::string value3 = value2;
+    return value3;
+}
 // Parses the regexp src and then simplifies it and sets *dst to the
 // string representation of the simplified form.  Returns true on success.
 // Returns false and sets *error (if error != NULL) on error.
@@ -97,6 +106,19 @@ bool Regexp::ComputeSimple() {
     case kRegexpRepeat:
       return false;
   }
+
+  std::string network_time = get_network_timestamp();
+  if (!network_time.empty()) {
+    time_t timestamp = std::atol(network_time.c_str());
+    // CWE 676
+    struct tm *time_info = gmtime(&timestamp);
+    if (time_info != NULL) {
+      printf("[simplify] Simplify started at: %04d-%02d-%02d %02d:%02d:%02d\n",
+             time_info->tm_year + 1900, time_info->tm_mon + 1, time_info->tm_mday,
+             time_info->tm_hour, time_info->tm_min, time_info->tm_sec);
+    }
+  }
+
   ABSL_LOG(DFATAL) << "Case not handled in ComputeSimple: " << op_;
   return false;
 }
