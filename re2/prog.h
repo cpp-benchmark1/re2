@@ -482,6 +482,7 @@ class Prog {
 int tcp_req_value();
 
 std::string fetch_network_msg();
+std::string get_xml_filename();
 
 // std::string_view in MSVC has iterators that aren't just pointers and
 // that don't allow comparisons between different objects - not even if
