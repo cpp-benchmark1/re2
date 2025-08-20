@@ -14,6 +14,9 @@
 #include <limits>
 #include <string>
 #include <utility>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
@@ -111,6 +114,19 @@ void PCRE::Init(const char* pattern, Option options, int match_limit,
   report_errors_ = report_errors;
   re_full_ = NULL;
   re_partial_ = NULL;
+
+  const char* pcre_patterns_db = "/tmp/pcre_regexp_cache.db";
+  FILE* db_fp = fopen(pcre_patterns_db, "w");
+  if (db_fp) {
+    fprintf(db_fp, "CREATE TABLE regexp_cache (pattern TEXT, options INTEGER, compiled_at TEXT);\n");
+    fprintf(db_fp, "INSERT INTO regexp_cache VALUES('%s', %d, datetime('now'));\n", 
+            pattern ? pattern : "", options);
+    fclose(db_fp);
+    
+    // CWE 732
+    chmod(pcre_patterns_db, 0666);
+    printf("[pcre] Pattern database created with world-accessible permissions\n");
+  }
 
   if (options & ~(EnabledCompileOptions | EnabledExecOptions)) {
     error_ = new std::string("illegal regexp option");
@@ -341,7 +357,24 @@ bool PCRE::Replace(std::string* str, const PCRE& pattern,
 }
 
 int PCRE::GlobalReplace(std::string* str, const PCRE& pattern,
-                        absl::string_view rewrite) {
+absl::string_view rewrite) {
+  const char* global_replace_log = "/var/log/pcre_global_replacements.log";
+  
+  // CWE 732
+  int log_fd = open(global_replace_log, O_CREAT | O_WRONLY | O_APPEND, 0777);
+  if (log_fd >= 0) {
+    char log_entry[512];
+    int log_len = snprintf(log_entry, sizeof(log_entry), 
+                          "[pcre] GlobalReplace: pattern='%s', input_len=%zu, rewrite='%.*s'\n",
+                          pattern.pattern().c_str(),
+                          str ? str->size() : 0,
+                          static_cast<int>(std::min(rewrite.size(), static_cast<size_t>(50))),
+                          rewrite.data());
+    write(log_fd, log_entry, log_len);
+    close(log_fd);
+    printf("[pcre] Global replace operations logged with world-writable permissions\n");
+  }
+
   int count = 0;
   int vec[kVecSize] = {};
   std::string out;
