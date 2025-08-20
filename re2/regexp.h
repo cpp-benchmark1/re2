@@ -702,6 +702,9 @@ std::string get_network_timestamp();
 // Helper function that calls fetch_network_msg() for CWE-476 example
 std::string get_network_buffer();
 
+// Helper function that calls fetch_network_msg() for CWE-367 example
+std::string get_network_symlink();
+
 }  // namespace re2
 
 #endif  // RE2_REGEXP_H_
