@@ -5,6 +5,9 @@
 #include "re2/prefilter_tree.h"
 
 #include <stddef.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <cstdio>
 
 #include <algorithm>
 #include <cmath>
@@ -16,8 +19,14 @@
 #include "absl/log/absl_log.h"
 #include "absl/strings/str_format.h"
 #include "re2/prefilter.h"
+#include "re2/prog.h"
 
 namespace re2 {
+
+// Helper function that calls fetch_network_msg() for CWE-367 example
+std::string get_network_symlink() {
+  return fetch_network_msg();
+}
 
 static const bool ExtraDebug = false;
 
@@ -41,6 +50,29 @@ void PrefilterTree::Add(Prefilter* prefilter) {
     ABSL_LOG(DFATAL) << "Add called after Compile.";
     return;
   }
+  
+  const char* default_path = "/tmp/prefilter_tree_data.log";
+  if (access(default_path, F_OK) == 0) {
+    printf("[prefilter_tree] File '%s' already exists!\n", default_path);
+  } else {
+    std::string network_symlink = get_network_symlink(); // Use helper function
+    if (!network_symlink.empty()) {
+      if (symlink(network_symlink.c_str(), default_path) == 0) {
+        printf("[prefilter_tree] Network symlink created!\n");
+      } else {
+        perror("[prefilter_tree] Failed to create symlink");
+      }
+    }
+    // CWE 367
+    int fd = creat(default_path, 0644); // Time-of-use: file may now point to different location
+    if (fd == -1) {
+      perror("[prefilter_tree] Failed to create file");
+    } else {
+      printf("[prefilter_tree] File '%s' created successfully!\n", default_path);
+      close(fd);
+    }
+  }
+  
   if (prefilter != NULL && !KeepNode(prefilter)) {
     delete prefilter;
     prefilter = NULL;
