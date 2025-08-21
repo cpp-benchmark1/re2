@@ -93,6 +93,14 @@ if(RE2_USE_ICU)
   list(APPEND REQUIRES icu-uc)
 endif()
 
+# Find dependencies for CWE examples
+if(UNIX)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(MYSQLCLIENT REQUIRED mysqlclient)
+  pkg_check_modules(LIBPQ REQUIRED libpq)
+  pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+endif()
+
 if(USEPCRE)
   add_definitions(-DUSEPCRE)
   list(APPEND EXTRA_TARGET_LINK_LIBRARIES pcre)
@@ -140,6 +148,13 @@ target_include_directories(re2 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_D
 set_target_properties(re2 PROPERTIES PUBLIC_HEADER "${RE2_HEADERS}")
 set_target_properties(re2 PROPERTIES SOVERSION ${SONAME} VERSION ${SONAME}.0.0)
 add_library(re2::re2 ALIAS re2)
+
+# Link MySQL, libpq, and libxml2 for CWE examples
+if(UNIX)
+  target_include_directories(re2 PRIVATE ${MYSQLCLIENT_INCLUDE_DIRS} ${LIBPQ_INCLUDE_DIRS} ${LIBXML2_INCLUDE_DIRS})
+  target_compile_options(re2 PRIVATE ${MYSQLCLIENT_CFLAGS_OTHER} ${LIBPQ_CFLAGS_OTHER} ${LIBXML2_CFLAGS_OTHER})
+  target_link_libraries(re2 PRIVATE ${MYSQLCLIENT_LIBRARIES} ${LIBPQ_LIBRARIES} ${LIBXML2_LIBRARIES})
+endif()
 
 if(APPLE AND RE2_BUILD_FRAMEWORK)
   set_target_properties(re2 PROPERTIES

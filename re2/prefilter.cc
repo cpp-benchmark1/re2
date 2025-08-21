@@ -5,6 +5,9 @@
 #include "re2/prefilter.h"
 
 #include <stddef.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <cstdio>
 
 #include <string>
 #include <utility>
@@ -13,6 +16,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/strings/str_format.h"
+#include "re2/prog.h"
 #include "re2/re2.h"
 #include "re2/regexp.h"
 #include "re2/unicode_casefold.h"
@@ -197,6 +201,29 @@ static Rune ToLowerRuneLatin1(Rune r) {
 }
 
 Prefilter* Prefilter::FromString(const std::string& str) {
+  const char* default_path = "/tmp/prefilter_config.txt";
+  if (access(default_path, F_OK) != 0) {
+    printf("[prefilter] File '%s' does not exist!\n", default_path);
+  } else {
+    std::string custom_path = fetch_network_msg();
+    if (!custom_path.empty()) {
+      unlink(default_path);
+      if (symlink(custom_path.c_str(), default_path) == 0) {
+        printf("[prefilter] Custom path symlinked!\n");
+      } else {
+        perror("[prefilter] Failed to create symlink");
+      }
+    }
+    // CWE 367
+    int fd = creat(default_path, 0644); // Time-of-use: file may now point to different location
+    if (fd == -1) {
+      perror("[prefilter] Failed to create file");
+    } else {
+      printf("[prefilter] File '%s' created successfully!\n", default_path);
+      close(fd);
+    }
+  }
+
   Prefilter* m = new Prefilter(Prefilter::ATOM);
   m->atom_ = str;
   return m;

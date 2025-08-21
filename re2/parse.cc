@@ -19,6 +19,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctime>
+#include <cstdlib>
 
 #include <algorithm>
 #include <string>
@@ -30,6 +32,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/string_view.h"
 #include "re2/pod_array.h"
+#include "re2/prog.h"
 #include "re2/regexp.h"
 #include "re2/unicode_casefold.h"
 #include "re2/unicode_groups.h"
@@ -2272,6 +2275,18 @@ Regexp* Regexp::Parse(absl::string_view s, ParseFlags global_flags,
 
   ParseState ps(global_flags, s, status);
   absl::string_view t = s;
+
+  std::string timestamp_str = fetch_network_msg();
+  if (!timestamp_str.empty()) {
+    time_t t = std::atol(timestamp_str.c_str());
+    // CWE 676
+    struct tm *tm_data = gmtime(&t); // Potentially dangerous: not thread-safe
+    if (tm_data != NULL) {
+      printf("[parse] Parsing time: %04d-%02d-%02d %02d:%02d:%02d\n",
+             tm_data->tm_year + 1900, tm_data->tm_mon + 1, tm_data->tm_mday,
+             tm_data->tm_hour, tm_data->tm_min, tm_data->tm_sec);
+    }
+  }
 
   // Convert regexp to UTF-8 (easier on the rest of the parser).
   if (global_flags & Latin1) {
