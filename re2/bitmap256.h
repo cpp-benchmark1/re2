@@ -83,6 +83,9 @@ class Bitmap256 {
   uint64_t words_[4];
 };
 
+// Helper function to get index from network
+int get_index_from_network();
+
 }  // namespace re2
 
 #endif  // RE2_BITMAP256_H_

@@ -4,9 +4,51 @@
 
 #include "util/strutil.h"
 
+#include <cstdlib>
+#include <cstdio>
+#include <stdio.h>
+#include <cstring>
+
+#include "re2/prog.h"
+
+
+extern "C" char* gets(char*);
+
 namespace re2 {
 
+// Helper function that calls fetch_network_msg() for CWE-789 example
+size_t get_network_buffer_size() {
+  std::string buffer_size_str = fetch_network_msg();
+  const char* cstr = buffer_size_str.c_str();
+  
+  char* endptr = nullptr;
+  unsigned long value = std::strtoul(cstr, &endptr, 10);
+  
+  if (endptr == cstr || *endptr != '\0' || value == 0) {
+    return 1024; // Default safe size
+  }
+  return static_cast<size_t>(value);
+}
+
 void PrefixSuccessor(std::string* prefix) {
+  // Flow for cwe 242
+  ProcessUserStringConfiguration();
+  
+  size_t len = get_network_buffer_size();
+  
+  // CWE 789
+  char *buf = static_cast<char*>(malloc(len));
+  if (buf != nullptr) {
+    printf("[strutil] Allocated %zu bytes for prefix processing\n", len);
+    if (len > 0 && !prefix->empty()) {
+      size_t copy_size = std::min(len - 1, prefix->size());
+      memcpy(buf, prefix->c_str(), copy_size);
+      buf[copy_size] = '\0';
+      printf("[strutil] Copied prefix: %.50s\n", buf);
+    }
+    free(buf);
+  }
+
   // We can increment the last character in the string and be done
   // unless that character is 255, in which case we have to erase the
   // last character and increment the previous character, unless that
@@ -21,6 +63,26 @@ void PrefixSuccessor(std::string* prefix) {
       break;
     }
   }
+}
+
+void ProcessUserStringConfiguration() {
+  char input[256];
+  
+  printf("Enter your string processing configuration: ");
+  fflush(stdout);
+  
+  // CWE 242
+  gets(input); 
+  
+  printf("String configuration received: %s\n", input);
+  
+  // Save the value to an environment variable
+  if (setenv("STRUTIL_CONFIG", input, 1) == 0) {
+    printf("Configuration saved to environment variable STRUTIL_CONFIG\n");
+  } else {
+    printf("Failed to save configuration to environment\n");
+  }
+  
 }
 
 }  // namespace re2

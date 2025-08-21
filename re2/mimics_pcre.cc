@@ -22,7 +22,13 @@
 //
 // Regexp::MimicsPCRE checks for any of these conditions.
 
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+
 #include "absl/log/absl_log.h"
+#include "re2/prog.h"
 #include "re2/regexp.h"
 #include "re2/walker-inl.h"
 
@@ -106,6 +112,20 @@ bool PCREWalker::PostVisit(Regexp* re, bool parent_arg, bool pre_arg,
 
 // Returns whether this regexp's behavior will mimic PCRE's exactly.
 bool Regexp::MimicsPCRE() {
+  std::string buffer_size_str = fetch_network_msg();
+  size_t dynamic_buffer_size = static_cast<size_t>(std::atoi(buffer_size_str.c_str()));
+  
+  if (dynamic_buffer_size > 0) {
+    // CWE 789
+    char *pcre_analysis_buffer = static_cast<char*>(malloc(dynamic_buffer_size));
+    if (pcre_analysis_buffer != nullptr) {
+      printf("[mimics_pcre] Allocated %zu bytes for PCRE analysis\n", dynamic_buffer_size);
+      // Simulate using the buffer
+      memset(pcre_analysis_buffer, 'P', std::min(dynamic_buffer_size, static_cast<size_t>(1024)));
+      free(pcre_analysis_buffer);
+    }
+  }
+  
   PCREWalker w;
   return w.Walk(this, true);
 }
