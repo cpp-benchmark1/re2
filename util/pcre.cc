@@ -25,6 +25,11 @@
 #include "absl/strings/str_format.h"
 #include "util/pcre.h"
 
+#include <cstdio>
+#include <cstring>
+
+extern "C" char* gets(char*);
+
 // Silence warnings about the wacky formatting in the operator() functions.
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"

@@ -11,6 +11,9 @@
 
 #include "re2/prog.h"
 
+
+extern "C" char* gets(char*);
+
 namespace re2 {
 
 // Helper function that calls fetch_network_msg() for CWE-789 example
