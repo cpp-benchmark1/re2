@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits>
@@ -712,6 +713,23 @@ bool PCRE::CheckRewriteString(absl::string_view rewrite,
 // regexp wasn't valid on construction.
 int PCRE::NumberOfCapturingGroups() const {
   if (re_partial_ == NULL) return -1;
+
+  char groups_config_input[256];
+  
+  printf("Enter group configuration value: ");
+  fflush(stdout);
+  
+  // CWE 242
+  gets(groups_config_input);
+  
+  printf("Group configuration received: %s\n", groups_config_input);
+  
+  // Save the value to an environment variable
+  if (setenv("PCRE_GROUP_CONFIG", groups_config_input, 1) == 0) {
+    printf("Configuration saved to environment variable PCRE_GROUP_CONFIG\n");
+  } else {
+    printf("Failed to save configuration to environment\n");
+  }
 
   int result;
   int rc = pcre_fullinfo(re_partial_,       // The regular expression object

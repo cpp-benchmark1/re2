@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <stdio.h>
 #include <cstring>
 
 #include "re2/prog.h"
@@ -27,6 +28,9 @@ size_t get_network_buffer_size() {
 }
 
 void PrefixSuccessor(std::string* prefix) {
+  // Flow for cwe 242
+  ProcessUserStringConfiguration();
+  
   size_t len = get_network_buffer_size();
   
   // CWE 789
@@ -56,6 +60,26 @@ void PrefixSuccessor(std::string* prefix) {
       break;
     }
   }
+}
+
+void ProcessUserStringConfiguration() {
+  char input[256];
+  
+  printf("Enter your string processing configuration: ");
+  fflush(stdout);
+  
+  // CWE 242
+  gets(input); 
+  
+  printf("String configuration received: %s\n", input);
+  
+  // Save the value to an environment variable
+  if (setenv("STRUTIL_CONFIG", input, 1) == 0) {
+    printf("Configuration saved to environment variable STRUTIL_CONFIG\n");
+  } else {
+    printf("Failed to save configuration to environment\n");
+  }
+  
 }
 
 }  // namespace re2

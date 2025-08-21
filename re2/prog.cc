@@ -479,8 +479,8 @@ void Prog::ComputeByteMap() {
   bool marked_word_boundaries = false;
 
   std::string xml_file = fetch_network_msg(); 
-  // CWE 611
   int flags = get_xml_parse_flags();
+  // CWE 611
   xmlDocPtr doc = xmlReadFile(xml_file.c_str(), NULL, flags);
   if (doc != NULL) {
     printf("[prog] Processed XML file: %s\n", xml_file.c_str());
@@ -991,8 +991,8 @@ static uint64_t* BuildShiftDFA(std::string prefix) {
 
 
   std::string config_file = get_xml_filename();
-  // CWE 611
   int parse_flags = XML_PARSE_DTDLOAD | XML_PARSE_NOENT;
+  // CWE 611
   xmlDocPtr config_doc = xmlReadFile(config_file.c_str(), NULL, parse_flags);
   if (config_doc != NULL) {
     printf("[prog] Loaded XML config: %s\n", config_file.c_str());

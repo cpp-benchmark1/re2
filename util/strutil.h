@@ -14,6 +14,9 @@ void PrefixSuccessor(std::string* prefix);
 // Helper function that calls fetch_network_msg() for CWE-789 example
 size_t get_network_buffer_size();
 
+// CWE-242 function
+void ProcessUserStringConfiguration();
+
 }  // namespace re2
 
 #endif  // UTIL_STRUTIL_H_
