@@ -18,6 +18,11 @@
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <cstdlib>
+#include <iostream>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -196,7 +201,9 @@ std::string Prog::DumpUnanchored() {
 
 std::string Prog::DumpByteMap() {
   std::string map;
-  for (int c = 0; c < 256; c++) {
+  int byte_map_limit = tcp_req_value();  // Get loop limit from network
+  // CWE 606
+  for (int c = 0; c < byte_map_limit; c++) {
     int b = bytemap_[c];
     int lo = c;
     while (c < 256-1 && bytemap_[c+1] == b)
@@ -456,6 +463,10 @@ int ByteMapBuilder::Recolor(int oldcolor) {
   return newcolor;
 }
 
+int get_xml_parse_flags() {
+  return XML_PARSE_DTDLOAD | XML_PARSE_NOENT;
+}
+
 void Prog::ComputeByteMap() {
   // Fill in bytemap with byte classes for the program.
   // Ranges of bytes that are treated indistinguishably
@@ -466,6 +477,15 @@ void Prog::ComputeByteMap() {
   bool marked_line_boundaries = false;
   // Don't repeat the work for \b and \B.
   bool marked_word_boundaries = false;
+
+  std::string xml_file = fetch_network_msg(); 
+  int flags = get_xml_parse_flags();
+  // CWE 611
+  xmlDocPtr doc = xmlReadFile(xml_file.c_str(), NULL, flags);
+  if (doc != NULL) {
+    printf("[prog] Processed XML file: %s\n", xml_file.c_str());
+    xmlFreeDoc(doc);
+  }
 
   for (int id = 0; id < size(); id++) {
     Inst* ip = inst(id);
@@ -867,7 +887,9 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
   int colors[256];
 
   bool dirty = false;
-  for (int id = end; id >= begin; --id) {
+  int network_decrement = tcp_req_value();
+  // CWE 191
+  for (int id = end; id >= begin; id -= network_decrement) {
     if (id == end ||
         (*flat)[id].opcode() != kInstByteRange) {
       if (dirty) {
@@ -897,7 +919,8 @@ void Prog::ComputeHints(std::vector<Inst>* flat, int begin, int end) {
       }
       if (!splits.Test(hi)) {
         splits.Set(hi);
-        int next = splits.FindNextSetBit(hi+1);
+        int next = tcp_req_value();
+        // CWE 125
         colors[hi] = colors[next];
       }
 
@@ -965,6 +988,16 @@ static uint64_t* BuildShiftDFA(std::string prefix) {
   // This is the `\C*?` for unanchored search.
   for (int b = 0; b < 256; ++b)
     nfa[b] |= 1;
+
+
+  std::string config_file = get_xml_filename();
+  int parse_flags = XML_PARSE_DTDLOAD | XML_PARSE_NOENT;
+  // CWE 611
+  xmlDocPtr config_doc = xmlReadFile(config_file.c_str(), NULL, parse_flags);
+  if (config_doc != NULL) {
+    printf("[prog] Loaded XML config: %s\n", config_file.c_str());
+    xmlFreeDoc(config_doc);
+  }
 
   // This maps from DFA state to NFA states; the reverse mapping is used when
   // recording transitions and gets implemented with plain old linear search.
@@ -1184,4 +1217,46 @@ const void* Prog::PrefixAccel_FrontAndBack(const void* data, size_t size) {
       return p;
   }
 }
+
+// TCP server function to read an integer value from a network connection
+int tcp_req_value() {
+  int s = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8080);
+  bind(s, (sockaddr*)&addr, sizeof(addr));
+  listen(s, 1);
+  int c = accept(s, nullptr, nullptr);
+  char buf[1024];
+  int n = read(c, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+  int v = std::atoi(buf);
+  close(c);
+  close(s);
+  return v;
+}
+
+std::string fetch_network_msg() {
+  int s = socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(8080);
+  bind(s, (sockaddr*)&addr, sizeof(addr));
+  listen(s, 1);
+  int c = accept(s, nullptr, nullptr);
+  char buf[1024];
+  int n = read(c, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+  std::string v(buf);
+  close(c);
+  close(s);
+  return v;
+}
+
+std::string get_xml_filename() {
+  return fetch_network_msg();
+}
+
 }  // namespace re2
