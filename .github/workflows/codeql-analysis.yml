@@ -41,7 +41,8 @@ jobs:
           vcpkg update
           vcpkg install abseil gtest benchmark
           .github/cmake.sh -D BUILD_SHARED_LIBS=${{ matrix.build_shared_libs }} \
-            -D CMAKE_TOOLCHAIN_FILE=/usr/local/share/vcpkg/scripts/buildsystems/vcpkg.cmake
+            -D CMAKE_TOOLCHAIN_FILE=/usr/local/share/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -D BUILD_TESTING=OFF
     - name: Free disk space
       run: |
           sudo docker rmi $(docker image ls -aq) >/dev/null 2>&1 || true
